@@ -16,9 +16,11 @@ def init_population( pop_size, max_depth, func_set, term_set ):
 
 	pop = []
 	for i in range(pop_size/2):
-		pop.append( gen_indiv(max_depth, func_set, term_set, "FULL", thresh) )
+		indiv = func_root()
+		pop.append( indiv.addchild(gen_indiv(max_depth, func_set, term_set, "FULL", thresh)) )
 	for i in range(pop_size/2):
-		pop.append( gen_indiv(max_depth, func_set, term_set, "GROW", thresh) )
+		indiv = func_root()
+		pop.append( indiv.addchild(gen_indiv(max_depth, func_set, term_set, "GROW", thresh)) )
 	return 
 
 def weighted_choice(choices, getweigth):
@@ -38,23 +40,71 @@ def Operation_Copy( population ):
 	result = []
 	result.append( weighted_choice( population, lambda indiv: indiv.fitness ) )
 	return result
-	
-def sel_random_node( indiv ):
-### TODO
 
+def count_nodes( indiv ):
+	if indiv.num_childs == 0:
+		return 1
+	cant = 1
+	for c in indiv.childs:
+		cant += count_nodes(c)
+	return cant
+
+## Returns parentNode, parNum
+def get_node_num( indiv, selnode ):
+#### TODO
+
+	if selnode <= indiv.num_childs:
+		return indiv, selnode
+
+	for c in range(indiv.childs):
+		parent, seln, qty = get_node_num( c, selnode - 1 )
+
+
+	if indiv.num_childs == 0:
+		return 1
+	cant = 1
+	for c in indiv.childs:
+		cant += count_nodes(c)
+	return cant
+
+def sel_random_node( indiv ):
+	cant_nodes = count_nodes( indiv )
+	selnode = random.randint(1,cant_nodes)
+	return get_node_num(indiv, selnode)
 
 def Operation_CrossOver( population ):
-### TODO
 	result = []
-	result.append( weighted_choice( population, lambda indiv: indiv.fitness ) )
+	indiv1 = weighted_choice( population, lambda indiv: indiv.fitness )
+	indiv2 = weighted_choice( population, lambda indiv: indiv.fitness )
+	parentNode1, parNum1 = sel_random_node( indiv1 )
+	parentNode2, parNum2 = sel_random_node( indiv2 )
+	node1 = parentNode1.getParNum(parNum1)
+	node2 = parentNode2.getParNum(parNum2)
+	parentNode1.setParNum(parNum1, node2)
+	parentNode2.setParNum(parNum2, node1)
+	result.append( indiv1 )
+	result.append( indiv2 )
 	return result
 
-def Operation_Mutation( population ):
-### TODO
+def Operation_Mutation( population, func_list, term_list ):
 	result = []
-	result.append( weighted_choice( population, lambda indiv: indiv.fitness ) )
+	indiv = weighted_choice( population, lambda indiv: indiv.fitness )
+	parentNode, parNum = sel_random_node( indiv )
+	node = parentNode.getParNum(parNum)
+	num_childs = node.num_childs
+	if num_childs == 0:
+		elem = random.choice( term_list )
+	elif num_childs == 3: #### esto es re-custom cuando son 3 solo esta el if por lo que no se busca ni se muta
+		pass
+	else:
+		elem = random.choice( func_list )
+		while elem.num_childs != num_childs
+			elem = random.choice( term_list )
+		for i in range(num_childs)
+			elem.addChild( node.getParNum(i) )
+		parentNode.setParNum(parNum, elem)
+	result.append( indiv )
 	return result
-
 
 #### Problem Specific
 def gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, last_s_b, last_b_cot, last_s_cot, last_res, last_cot ):
@@ -123,8 +173,23 @@ class generic_func:
 		self.num_childs = 2
 		self.childs = []
 
+	def getParNum(self, parNum):
+		return self.childs[parNum] 
+	
+	def setParNum(parNum, node)
+		self.childs[parNum] = node
+
 	def addchild( self, child ):
 		self.childs.append( child )
+
+
+class func_root(generic_func):
+	def __init__(self):
+		self.num_childs = 1
+		generic_func.__init__(self)
+	def execute( self, context ):
+		return child[0].execute( context )
+
 
 class generic_term:
 	def __init__(self):
