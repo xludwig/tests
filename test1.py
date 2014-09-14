@@ -1,12 +1,13 @@
 ##### Generic Funcs
+import random
 
 def gen_indiv(max_d, func_set, term_set ,method, thresh):
-	if max_d = 0 or (method = "GROW" and random.random() < thresh:
-		elem = random.choice( term_set )
+	if max_d == 0 or (method == "GROW" and random.random() < thresh):
+		elem = random.choice( term_set )()
 	else:
-		elem = random.choice( func_set )
+		elem = random.choice( func_set )()
 		
-	for i in range(elem.child_qty):
+	for i in range(elem.num_childs):
 		elem.addchild( gen_indiv(max_d - 1, func_set, term_set ,method, thresh) )
 
 	return elem
@@ -14,14 +15,18 @@ def gen_indiv(max_d, func_set, term_set ,method, thresh):
 def init_population( pop_size, max_depth, func_set, term_set ):
 	thresh = len(term_set) / ( len(term_set) + len(func_set) )
 
-	pop = []
+	populat = []
 	for i in range(pop_size/2):
+		print "Creating FULL", i
 		indiv = func_root()
-		pop.append( indiv.addchild(gen_indiv(max_depth, func_set, term_set, "FULL", thresh)) )
+		indiv.addchild(gen_indiv(max_depth, func_set, term_set, "FULL", thresh))
+		populat.append( indiv )
 	for i in range(pop_size/2):
+		print "Creating GROW", i
 		indiv = func_root()
-		pop.append( indiv.addchild(gen_indiv(max_depth, func_set, term_set, "GROW", thresh)) )
-	return 
+		indiv.addchild(gen_indiv(max_depth, func_set, term_set, "GROW", thresh))
+		populat.append( indiv )
+	return populat
 
 def weighted_choice(choices, getweigth):
    total = sum( getweigth(c) for c in choices)
@@ -45,27 +50,125 @@ def count_nodes( indiv ):
 	if indiv.num_childs == 0:
 		return 1
 	cant = 1
-	for c in indiv.childs:
+	for c in indiv.child:
 		cant += count_nodes(c)
 	return cant
+
+
+def get_node_rec( indiv, selnode ):
+	#print "GNR: ", indiv.nam, " - ", selnode
+	accum_qty = 1
+	node_num = 0
+	for c in indiv.child:
+		if selnode - accum_qty == 0:
+			#print "R1", indiv.nam, 0, 0
+			return indiv, node_num, 0
+		#print "0", c.nam, selnode - accum_qty
+		parent, seln, qty = get_node_rec( c, selnode - accum_qty )
+		#print "1", parent, seln, qty
+		if qty == 0:
+			#print "R2", parent.nam, seln, 0
+			return parent, seln, 0
+		accum_qty += qty
+		node_num += 1
+		#print "Acc_qty", indiv.nam, c.nam, accum_qty
+	
+	#print "R4", None, None, accum_qty
+	return None, None, accum_qty
+
 
 ## Returns parentNode, parNum
+## Passed test_gn2
 def get_node_num( indiv, selnode ):
-#### TODO
+	parent, seln, qty = get_node_rec(indiv, selnode)
+	return parent, seln
 
-	if selnode <= indiv.num_childs:
-		return indiv, selnode
+class cls_test_gn:
+	def __init__(self, nam, numnodes):
+		self.num_childs = numnodes
+		self.nam = nam
+		self.childs = []
+	def __repr__(self):
+		if self.num_child > 0:
+			return self.nam + "-" + str(self.num_childs) + ": " + str(self.childs) 
+		else:
+			return self.nam + "-" + str(self.num_childs)
+## A-> B -> C -> D
+##       -> E -> F
+##            -> G
+def test_gn1():
+	A = cls_test_gn("A", 1)
+	B = cls_test_gn("B", 2)
+	C = cls_test_gn("C", 1)
+	D = cls_test_gn("D", 0)
+	E = cls_test_gn("E", 2)
+	F = cls_test_gn("F", 0)
+	G = cls_test_gn("G", 0)
+	
+	A.childs.append(B)
+	B.childs.append(C)
+	B.childs.append(E)
+	C.childs.append(D)
+	E.childs.append(F)
+	E.childs.append(G)
+	
+	print A
+	print count_nodes(A)
+	print get_node_num( A, 1 )
+	print get_node_num( A, 2 )
+	print get_node_num( A, 3 )
+	print get_node_num( A, 4 )
+	print get_node_num( A, 5 )
+	print get_node_num( A, 6 )
+	
+	exit()
+	
 
-	for c in range(indiv.childs):
-		parent, seln, qty = get_node_num( c, selnode - 1 )
+## A-> B -> C -> D
+##       -> E -> F
+##            -> G
+##       -> H -> I
+##            -> J
+##            -> K -> L
+##       -> M -> N
+def test_gn2():
+	A = cls_test_gn("A", 1)
+	B = cls_test_gn("B", 4)
+	C = cls_test_gn("C", 1)
+	D = cls_test_gn("D", 0)
+	E = cls_test_gn("E", 2)
+	F = cls_test_gn("F", 0)
+	G = cls_test_gn("G", 0)
+	H = cls_test_gn("H", 3)
+	I = cls_test_gn("I", 0)
+	J = cls_test_gn("J", 0)
+	K = cls_test_gn("K", 1)
+	L = cls_test_gn("L", 0)
+	M = cls_test_gn("M", 1)
+	N = cls_test_gn("N", 0)
+	
+	A.childs.append(B)
+	B.childs.append(C)
+	B.childs.append(E)
+	B.childs.append(H)
+	B.childs.append(M)
+	C.childs.append(D)
+	E.childs.append(F)
+	E.childs.append(G)
+	H.childs.append(I)
+	H.childs.append(J)
+	H.childs.append(K)
+	K.childs.append(L)
+	M.childs.append(N)
+	
+	print A
+	print count_nodes(A)
+	for i in range( 1, 14 ):
+		print i, get_node_num( A, i )
+	exit()
 
+#test_gn2() 
 
-	if indiv.num_childs == 0:
-		return 1
-	cant = 1
-	for c in indiv.childs:
-		cant += count_nodes(c)
-	return cant
 
 def sel_random_node( indiv ):
 	cant_nodes = count_nodes( indiv )
@@ -98,9 +201,9 @@ def Operation_Mutation( population, func_list, term_list ):
 		pass
 	else:
 		elem = random.choice( func_list )
-		while elem.num_childs != num_childs
+		while elem.num_childs != num_childs:
 			elem = random.choice( term_list )
-		for i in range(num_childs)
+		for i in range(num_childs):
 			elem.addChild( node.getParNum(i) )
 		parentNode.setParNum(parNum, elem)
 	result.append( indiv )
@@ -121,6 +224,7 @@ def gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, la
 	context["last_s_cot"] = last_s_cot
 	context["last_res"] = last_res
 	context["last_cot"] = last_cot
+	return context
 	
 def evalFitness( prog, rundata ):
 	b_bal = 1
@@ -141,9 +245,8 @@ def evalFitness( prog, rundata ):
 	last_res = 0
 	last_cot = 0
 	for d in rundata:
-		gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, last_s_b, last_b_cot, last_s_cot, last_res, last_cot ) 
+		cont = gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, last_s_b, last_b_cot, last_s_cot, last_res, last_cot ) 
 		res = prog.execute( cont )
-		
 		if res < -10:
 			if res < -100: res = -100
 			if b_bal >= 0.01:
@@ -155,7 +258,7 @@ def evalFitness( prog, rundata ):
 				last_s_b = delta
 		elif res > 10:
 			if res > 100: res = 100
-			if d_val >= 0.01 * d:
+			if d_bal >= 0.01 * d:
 				delta = d_bal * ( res / 100 )
 				b_bal += (delta / d) * 0.998
 				d_bal -= delta
@@ -171,16 +274,16 @@ def evalFitness( prog, rundata ):
 class generic_func:
 	def __init__(self):
 		self.num_childs = 2
-		self.childs = []
+		self.child = []
 
 	def getParNum(self, parNum):
-		return self.childs[parNum] 
+		return self.child[parNum] 
 	
-	def setParNum(parNum, node)
-		self.childs[parNum] = node
+	def setParNum(self, parNum, node):
+		self.child[parNum] = node
 
 	def addchild( self, child ):
-		self.childs.append( child )
+		self.child.append( child )
 
 
 class func_root(generic_func):
@@ -188,12 +291,13 @@ class func_root(generic_func):
 		self.num_childs = 1
 		generic_func.__init__(self)
 	def execute( self, context ):
-		return child[0].execute( context )
+		return self.child[0].execute( context )
 
 
 class generic_term:
 	def __init__(self):
 		self.num_childs = 0
+		self.child = []
 	def addchild( self, child ):
 		pass
 
@@ -203,66 +307,72 @@ class generic_term:
 
 class func_ifless(generic_func):
 	def __init__(self):
-		self.num_childs = 4
 		generic_func.__init__(self)
+		self.num_childs = 4
+
 	def execute( self, context ):
-		if child[0].execute( context ) < child[1].execute( context ):
-			return child[2].execute( context )
+		if self.child[0].execute( context ) < self.child[1].execute( context ):
+			return self.child[2].execute( context )
 		else:
-			return child[3].execute( context )
+			return self.child[3].execute( context )
 
 class func_iflesseq(generic_func):
 	def __init__(self):
-		self.num_childs = 4
 		generic_func.__init__(self)
+		self.num_childs = 4
+
 	def execute( self, context ):
-		if child[0].execute( context ) <= child[1].execute( context ):
-			return child[2].execute( context )
+		if self.child[0].execute( context ) <= self.child[1].execute( context ):
+			return self.child[2].execute( context )
 		else:
-			return child[3].execute( context )
+			return self.child[3].execute( context )
 
 
 class func_ifmore(generic_func):
 	def __init__(self):
-		self.num_childs = 4
 		generic_func.__init__(self)
+		self.num_childs = 4
+
 	def execute( self, context ):
-		if child[0].execute( context ) > child[1].execute( context ):
-			return child[2].execute( context )
+		if self.child[0].execute( context ) > self.child[1].execute( context ):
+			return self.child[2].execute( context )
 		else:
-			return child[3].execute( context )
+			return self.child[3].execute( context )
 
 class func_ifmoreeq(generic_func):
 	def __init__(self):
-		self.num_childs = 4
 		generic_func.__init__(self)
+		self.num_childs = 4
+
 	def execute( self, context ):
-		if child[0].execute( context ) >= child[1].execute( context ):
-			return child[2].execute( context )
+		if self.child[0].execute( context ) >= self.child[1].execute( context ):
+			return self.child[2].execute( context )
 		else:
-			return child[3].execute( context )
+			return self.child[3].execute( context )
 
 class func_ifeq(generic_func):
 	def __init__(self):
-		self.num_childs = 4
 		generic_func.__init__(self)
+		self.num_childs = 4
+
 	def execute( self, context ):
-		if child[0].execute( context ) == child[1].execute( context ):
-			return child[2].execute( context )
+		if self.child[0].execute( context ) == self.child[1].execute( context ):
+			return self.child[2].execute( context )
 		else:
-			return child[3].execute( context )
+			return self.child[3].execute( context )
 
 #### 3 pars
 
 class func_if(generic_func):
 	def __init__(self):
-		self.num_childs = 3
 		generic_func.__init__(self)
+		self.num_childs = 3
+
 	def execute( self, context ):
-		if child[0].execute( context ) != 0:
-			return child[1].execute( context )
+		if self.child[0].execute( context ) != 0:
+			return self.child[1].execute( context )
 		else:
-			return child[2].execute( context )
+			return self.child[2].execute( context )
 
 #### 2 pars
 
@@ -270,8 +380,8 @@ class func_plus(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		a = child[0].execute( context )
-		b = child[1].execute( context )
+		a = self.child[0].execute( context )
+		b = self.child[1].execute( context )
 		try:		
 			return a + b
 		except:
@@ -282,8 +392,8 @@ class func_minus(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		a = child[0].execute( context )
-		b = child[1].execute( context )
+		a = self.child[0].execute( context )
+		b = self.child[1].execute( context )
 		try:		
 			return a - b
 		except:
@@ -293,8 +403,8 @@ class func_por(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		a = child[0].execute( context )
-		b = child[1].execute( context )
+		a = self.child[0].execute( context )
+		b = self.child[1].execute( context )
 		try:		
 			return a * b
 		except:
@@ -304,8 +414,8 @@ class func_div(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		a = child[0].execute( context )
-		b = child[1].execute( context )
+		a = self.child[0].execute( context )
+		b = self.child[1].execute( context )
 		try:		
 			return a / b
 		except:
@@ -315,7 +425,7 @@ class func_less(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if child[0].execute( context ) < child[1].execute( context ):
+		if self.child[0].execute( context ) < self.child[1].execute( context ):
 			return 1
 		else:
 			return 0
@@ -324,7 +434,7 @@ class func_lesseq(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if child[0].execute( context ) <= child[1].execute( context ):
+		if self.child[0].execute( context ) <= self.child[1].execute( context ):
 			return 1
 		else:
 			return 0
@@ -333,7 +443,7 @@ class func_more(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if child[0].execute( context ) > child[1].execute( context ):
+		if self.child[0].execute( context ) > self.child[1].execute( context ):
 			return 1
 		else:
 			return 0
@@ -342,7 +452,7 @@ class func_moreeq(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if child[0].execute( context ) >= child[1].execute( context ):
+		if self.child[0].execute( context ) >= self.child[1].execute( context ):
 			return 1
 		else:
 			return 0
@@ -351,7 +461,7 @@ class func_eq(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if child[0].execute( context ) == child[1].execute( context ):
+		if self.child[0].execute( context ) == self.child[1].execute( context ):
 			return 1
 		else:
 			return 0
@@ -360,7 +470,7 @@ class func_and(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if ( child[0].execute( context ) != 0 ) and ( child[1].execute( context ) != 0 ):
+		if ( self.child[0].execute( context ) != 0 ) and ( self.child[1].execute( context ) != 0 ):
 			return 1
 		else:
 			return 0
@@ -369,7 +479,7 @@ class func_or(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		if ( child[0].execute( context ) != 0 ) or ( child[1].execute( context ) != 0 ):
+		if ( self.child[0].execute( context ) != 0 ) or ( self.child[1].execute( context ) != 0 ):
 			return 1
 		else:
 			return 0
@@ -378,41 +488,51 @@ class func_prev_delta_x_y(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
 	def execute( self, context ):
-		x = child[0].execute( context )
-		y = child[1].execute( context )
+		x = self.child[0].execute( context )
+		y = self.child[1].execute( context )
 		last_data = context["last_data"]
+		if len(last_data) < 1:
+			return 0
 		len_data = len(last_data) - 1
 		if x < 0: x = 0
 		if y < 0: y = 0
 		if x > len_data: x = len_data
 		if y > len_data: y = len_data
-		return last_data[y] - last_data[x]
+		return last_data[int(y)] - last_data[int(x)]
 
 #### 1 par
 
 class func_prev_cot(generic_func):
 	def __init__(self):
-		self.num_childs = 1
 		generic_func.__init__(self)
+		self.num_childs = 1
+
 	def execute( self, context ):
-		x = child[0].execute( context )
+		x = self.child[0].execute( context )
 		last_data = context["last_data"]
+		if len(last_data) < 1:
+			return 0
 		len_data = len(last_data) - 1
 		if x < 0: x = 0
 		if x > len_data: x = len_data
-		return last_data[x]
+		return last_data[int(x)]
 
 class func_prev_delta(generic_func):
 	def __init__(self):
-		self.num_childs = 1
 		generic_func.__init__(self)
+		self.num_childs = 1
+
 	def execute( self, context ):
-		x = child[0].execute( context )
+		x = self.child[0].execute( context )
 		last_data = context["last_data"]
+		if len(last_data) < 1:
+			return 0
 		len_data = len(last_data) - 1
 		if x < 0: x = 0
 		if x > len_data - 1: x = len_data - 1
-		return last_data[len_data] - last_data[x]
+		a = last_data[len_data]
+		b = last_data[int(x)]
+		return a - b
 
 #####################################
 #####################################
@@ -525,36 +645,38 @@ class term_runnum(generic_term):
 		return context["runnum"]
 
 def main():
-
-	pop_size = 1000
-	max_depth = 30
+	pop_size = 20
+	max_depth = 5
 	max_generations = 1000
-	rundata = []
-	func_set = []
-	term_set = []
+	rundata = [100, 100, 100.2, 100.5, 101, 1000, 1010, 1020, 900, 500, 200, 90, 80, 50]
+	func_set = [func_ifless, func_iflesseq, func_ifmore, func_ifmoreeq, func_ifeq, func_if, func_plus, func_minus, func_por, func_div, func_less, func_lesseq, func_more, func_moreeq, func_eq, func_and, func_or, func_prev_delta_x_y, func_prev_cot, func_prev_delta]
+	term_set = [term_zero, term_one, term_two, term_three, term_random_const_100, term_random_const_1000, term_last_b_d, term_last_s_d, term_last_b_b, term_last_s_b, term_last_b_cot, term_last_s_cot, term_last_res, term_last_cot, term_bal_b, term_bal_d, term_runnum]
 
 	copy_probability = 0.1
 	crossover_probability = 0.85
 	mutation_probability = 0.05
-	operations = [( Opeartion_Copy, copy_probability), ( Operation_CrossOver, crossover_probability), ( Operation_Mutation, mutation_probability ) ]
+	operations = [( Operation_Copy, copy_probability), ( Operation_CrossOver, crossover_probability), ( Operation_Mutation, mutation_probability ) ]
 
 
-	population = init_population( pop_size )
+	print "Creating Initial Population"
+	population = init_population( pop_size, max_depth, func_set, term_set )
 	generation_num = 0
 	while generation_num < max_generations:
+		print "Running Gen: ", generation_num
+		print "Evaluation Fitness Gen: ", generation_num
 		for prog in population:
 			prog.fitness = evalFitness( prog, rundata ) 
 		i = 0
 		next_generation = []
+		print "Creating Next Generation: ", generation_num + 1
 		while i < pop_size:
 			oper = select_operation(operations)
-			gen_new_indiv = oper( population )
-			next_generation.extend( gen_new_indiv )
-			i += len(new_indivs)
+			gen_new_indivs = oper( population )
+			next_generation.extend( gen_new_indivs )
+			i += len(gen_new_indivs)
 		population = next_generation
 		next_generation = []
 		generation_num += 1
-
 
 	print max(population, key=lambda item: item.fitness)
 
