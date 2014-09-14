@@ -41,7 +41,7 @@ def select_operation( operations ):
 	oper = weighted_choice( operations, lambda op: op[1] )
 	return oper[0]
 	
-def Operation_Copy( population ):
+def Operation_Copy( population, func_list, term_list ):
 	result = []
 	result.append( weighted_choice( population, lambda indiv: indiv.fitness ) )
 	return result
@@ -172,10 +172,10 @@ def test_gn2():
 
 def sel_random_node( indiv ):
 	cant_nodes = count_nodes( indiv )
-	selnode = random.randint(1,cant_nodes)
+	selnode = random.randint(1,cant_nodes-1)
 	return get_node_num(indiv, selnode)
 
-def Operation_CrossOver( population ):
+def Operation_CrossOver( population, func_list, term_list ):
 	result = []
 	indiv1 = weighted_choice( population, lambda indiv: indiv.fitness )
 	indiv2 = weighted_choice( population, lambda indiv: indiv.fitness )
@@ -196,15 +196,15 @@ def Operation_Mutation( population, func_list, term_list ):
 	node = parentNode.getParNum(parNum)
 	num_childs = node.num_childs
 	if num_childs == 0:
-		elem = random.choice( term_list )
+		elem = random.choice( term_list )()
 	elif num_childs == 3: #### esto es re-custom cuando son 3 solo esta el if por lo que no se busca ni se muta
 		pass
 	else:
-		elem = random.choice( func_list )
+		elem = random.choice( func_list )()
 		while elem.num_childs != num_childs:
-			elem = random.choice( term_list )
+			elem = random.choice( func_list )()
 		for i in range(num_childs):
-			elem.addChild( node.getParNum(i) )
+			elem.addchild( node.getParNum(i) )
 		parentNode.setParNum(parNum, elem)
 	result.append( indiv )
 	return result
@@ -288,8 +288,8 @@ class generic_func:
 
 class func_root(generic_func):
 	def __init__(self):
-		self.num_childs = 1
 		generic_func.__init__(self)
+		self.num_childs = 1
 	def execute( self, context ):
 		return self.child[0].execute( context )
 
@@ -386,7 +386,6 @@ class func_plus(generic_func):
 			return a + b
 		except:
 			return a
-
 
 class func_minus(generic_func):
 	def __init__(self):
@@ -645,10 +644,13 @@ class term_runnum(generic_term):
 		return context["runnum"]
 
 def main():
-	pop_size = 20
-	max_depth = 5
-	max_generations = 1000
-	rundata = [100, 100, 100.2, 100.5, 101, 1000, 1010, 1020, 900, 500, 200, 90, 80, 50]
+	pop_size = 100
+	max_depth = 10
+	max_generations = 100
+	##rundata = [100, 100, 100.2, 100.5, 101, 1000, 1010, 1020, 900, 500, 200, 90, 80, 50]
+	## daily 2014 hasta el 09-09
+	rundata = [770.4357, 808.0485, 830.0240, 858.9833, 940.0972, 951.3865, 810.5833, 859.9485, 860.8950, 884.6667, 930.9050, 873.2635, 857.9564, 851.8280, 874.7130, 847.3735, 828.2220, 843.7583, 878.6807, 871.0483, 874.2885, 863.9500, 854.3475, 825.1221, 861.8516, 880.1523, 814.5302, 833.9395, 837.5148, 845.8467, 848.2875, 853.0164, 854.3750, 846.9048, 842.0123, 820.8670, 783.6211, 703.5670, 676.9094, 681.9371, 679.7338, 669.4418, 648.3835, 598.4075, 656.6068, 645.4300, 610.6525, 621.4940, 621.2235, 617.7100, 552.2138, 569.0425, 604.7473, 604.5823, 545.3225, 534.7108, 577.0858, 576.6980, 543.9265, 563.7358, 560.3045, 661.1225, 663.5980, 661.7858, 658.7245, 625.8278, 615.2400, 633.1825, 625.8285, 628.9543, 631.3913, 638.1650, 626.7067, 633.6652, 630.7167, 621.2225, 613.6315, 608.8157, 586.5898, 570.7705, 564.4215, 561.3534, 586.2718, 582.2802, 579.0722, 478.1595, 502.4399, 493.1803, 461.8695, 458.4972, 478.7163, 437.5150, 447.0822, 448.8792, 464.8259, 460.7028, 446.2195, 450.4638, 440.1983, 360.8407, 420.0563, 420.6600, 414.9495, 457.6338, 520.1233, 529.1625, 494.4000, 478.2312, 501.5515, 497.3177, 493.0921, 484.4290, 486.9317, 500.2568, 459.6104, 456.1395, 429.6537, 437.0587, 444.2533, 445.8655, 456.2673, 446.6438, 436.9381, 434.0643, 429.7242, 426.9920, 436.9605, 435.3430, 448.2350, 452.7108, 436.5420, 438.4278, 437.4130, 441.7498, 444.3162, 445.0133, 446.3583, 444.8090, 444.3128, 485.8305, 489.1625, 526.0577, 519.0392, 525.6332, 570.0950, 581.8267, 569.6332, 574.4547, 565.5058, 616.4700, 623.2567, 629.0242, 658.7860, 665.7300, 636.7837, 656.0598, 645.5647, 652.7083, 653.6402, 645.3410, 649.8068, 627.9098, 581.8033, 597.4267, 571.6902, 591.9718, 588.0600, 607.3427, 604.8752, 592.2648, 588.5215, 591.0298, 598.8765, 587.4598, 575.0667, 562.1263, 579.3842, 600.8645, 591.9940, 598.6032, 639.3623, 635.5905, 647.3400, 640.6879, 626.9575, 628.3313, 631.7065, 617.9918, 620.2193, 620.5496, 615.1129, 631.1804, 634.4775, 627.5759, 618.3798, 619.3558, 615.2039, 622.6234, 628.2156, 625.8011, 621.3725, 620.0103, 618.8076, 617.9274, 600.0065, 599.9280, 593.8526, 590.9454, 584.6931, 582.2034, 564.3700, 581.3501, 595.0845, 587.2878, 585.5078, 586.7639, 583.1125, 583.0355, 587.3971, 590.5324, 588.0950, 589.4500, 573.3066, 568.2099, 544.5681, 508.5536, 496.6164, 519.8314, 492.9513, 460.6719, 486.7360, 511.9259, 516.1605, 513.9419, 497.2185, 508.5735, 501.6296, 513.4704, 510.4300, 507.0154, 508.4224, 501.2031, 478.0734, 474.1346, 475.3181, 474.5370, 489.0865, 480.5010, 482.2371, 479.4833, 472.1479, 471.5576]
+	
 	func_set = [func_ifless, func_iflesseq, func_ifmore, func_ifmoreeq, func_ifeq, func_if, func_plus, func_minus, func_por, func_div, func_less, func_lesseq, func_more, func_moreeq, func_eq, func_and, func_or, func_prev_delta_x_y, func_prev_cot, func_prev_delta]
 	term_set = [term_zero, term_one, term_two, term_three, term_random_const_100, term_random_const_1000, term_last_b_d, term_last_s_d, term_last_b_b, term_last_s_b, term_last_b_cot, term_last_s_cot, term_last_res, term_last_cot, term_bal_b, term_bal_d, term_runnum]
 
@@ -662,16 +664,20 @@ def main():
 	population = init_population( pop_size, max_depth, func_set, term_set )
 	generation_num = 0
 	while generation_num < max_generations:
-		print "Running Gen: ", generation_num
 		print "Evaluation Fitness Gen: ", generation_num
+		totalfitness = 0
+		maxfitness = 0
 		for prog in population:
 			prog.fitness = evalFitness( prog, rundata ) 
+			totalfitness += prog.fitness
+			maxfitness = max( [maxfitness, prog.fitness] )
+		print "Total Fitness: ", totalfitness, "Max: ", maxfitness, "Gen: ", generation_num
 		i = 0
 		next_generation = []
 		print "Creating Next Generation: ", generation_num + 1
 		while i < pop_size:
 			oper = select_operation(operations)
-			gen_new_indivs = oper( population )
+			gen_new_indivs = oper( population, func_set, term_set )
 			next_generation.extend( gen_new_indivs )
 			i += len(gen_new_indivs)
 		population = next_generation
