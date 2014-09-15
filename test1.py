@@ -1,5 +1,7 @@
 ##### Generic Funcs
 import random
+import time
+import pickle
 
 def gen_indiv(max_d, func_set, term_set ,method, thresh):
 	if max_d == 0 or (method == "GROW" and random.random() < thresh):
@@ -12,16 +14,16 @@ def gen_indiv(max_d, func_set, term_set ,method, thresh):
 
 	return elem
 
-def init_population( pop_size, max_depth, func_set, term_set ):
+def init_population( pop_size, max_depth, func_set, term_set, growpct, fullpct):
 	thresh = len(term_set) / ( len(term_set) + len(func_set) )
 
 	populat = []
-	for i in range(pop_size/2):
+	for i in range(int(pop_size*fullpct)):
 		print "Creating FULL", i
 		indiv = func_root()
 		indiv.addchild(gen_indiv(max_depth, func_set, term_set, "FULL", thresh))
 		populat.append( indiv )
-	for i in range(pop_size/2):
+	for i in range(int(pop_size*growpct)):
 		print "Creating GROW", i
 		indiv = func_root()
 		indiv.addchild(gen_indiv(max_depth, func_set, term_set, "GROW", thresh))
@@ -226,9 +228,9 @@ def gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, la
 	context["last_cot"] = last_cot
 	return context
 	
-def evalFitness( prog, rundata ):
-	b_bal = 1
-	d_bal = .1
+def evalFitness( prog, rundata, print_data ):
+	b_bal = .1
+	d_bal = 1
 	
 	# Tomo -100 a -10 como % ven
 	# Tomo 10 a 100 como % comp
@@ -256,6 +258,7 @@ def evalFitness( prog, rundata ):
 				last_s_cot = d
 				last_s_d = delta * d
 				last_s_b = delta
+				if print_data: print runnum, "V: ", res, "cot: ", d ,"D: ", d_bal, "B: ", b_bal
 		elif res > 10:
 			if res > 100: res = 100
 			if d_bal >= 0.01 * d:
@@ -265,6 +268,7 @@ def evalFitness( prog, rundata ):
 				last_b_cot = d
 				last_b_d = delta
 				last_b_b = (delta / d)
+				if print_data: print runnum, "C: ", res, "cot: ", d ,"D: ", d_bal, "B: ", b_bal
 		last_res = res
 		last_cot = d
 		runnum += 1
@@ -643,9 +647,56 @@ class term_runnum(generic_term):
 	def execute( self, context ):
 		return context["runnum"]
 
-def main():
-	pop_size = 100
-	max_depth = 10
+max_total_fitness = 0
+max_total_fitness_indiv = None
+rand_state = None
+rundata = None
+
+import sys
+
+def dumpstate():
+	global max_total_fitness
+	global max_total_fitness_indiv
+	global rand_state
+	global rundata
+
+	if max_total_fitness == 0:
+		print "Not Dumping State"
+		sys.exit()
+		return
+
+	print "Dumping State"
+
+	timestr = time.strftime("%Y%m%d-%H%M%S")
+
+	with open(timestr + "_rand.dmp", 'wb') as f:
+	    pickle.dump(rand_state, f)
+
+	with open(timestr + "_rundata.dmp", 'wb') as f:
+	    pickle.dump(rundata, f)
+
+	with open(timestr + "_max" + str( int(max_total_fitness) ) + ".dmp", 'wb') as f:
+	    pickle.dump(max_total_fitness_indiv, f)
+
+	print "Dump Finished"
+	sys.exit()
+
+import signal
+
+def signal_handler(signal, frame):
+	dumpstate()
+
+def generate():
+	global max_total_fitness
+	global max_total_fitness_indiv
+	global rand_state
+	global rundata
+
+	rand_state = random.getstate()
+	signal.signal(signal.SIGINT, signal_handler)
+	
+	pop_size = 1000
+	max_depth = 8
 	max_generations = 100
 	##rundata = [100, 100, 100.2, 100.5, 101, 1000, 1010, 1020, 900, 500, 200, 90, 80, 50]
 	## daily 2014 hasta el 09-09
@@ -654,23 +705,39 @@ def main():
 	func_set = [func_ifless, func_iflesseq, func_ifmore, func_ifmoreeq, func_ifeq, func_if, func_plus, func_minus, func_por, func_div, func_less, func_lesseq, func_more, func_moreeq, func_eq, func_and, func_or, func_prev_delta_x_y, func_prev_cot, func_prev_delta]
 	term_set = [term_zero, term_one, term_two, term_three, term_random_const_100, term_random_const_1000, term_last_b_d, term_last_s_d, term_last_b_b, term_last_s_b, term_last_b_cot, term_last_s_cot, term_last_res, term_last_cot, term_bal_b, term_bal_d, term_runnum]
 
-	copy_probability = 0.1
-	crossover_probability = 0.85
-	mutation_probability = 0.05
+	copy_probability = 0.2
+	crossover_probability = 0.7
+	mutation_probability = 0.1
 	operations = [( Operation_Copy, copy_probability), ( Operation_CrossOver, crossover_probability), ( Operation_Mutation, mutation_probability ) ]
 
+	growpct = 0.0
+	fullpct = 1.0
 
 	print "Creating Initial Population"
-	population = init_population( pop_size, max_depth, func_set, term_set )
+	population = init_population( pop_size, max_depth, func_set, term_set, growpct, fullpct )
 	generation_num = 0
+	max_total_fitness = 0
 	while generation_num < max_generations:
+		maxnodes = 0
+		totalnodes = 0
+		for p in population:
+			nodes = count_nodes( p )
+			totalnodes += nodes
+			maxnodes = max( [maxnodes, nodes] )
+		print "Population Stats: max:", maxnodes, "total:", totalnodes
+	
 		print "Evaluation Fitness Gen: ", generation_num
 		totalfitness = 0
 		maxfitness = 0
 		for prog in population:
-			prog.fitness = evalFitness( prog, rundata ) 
+			prog.fitness = evalFitness( prog, rundata, False ) 
 			totalfitness += prog.fitness
 			maxfitness = max( [maxfitness, prog.fitness] )
+			if maxfitness == prog.fitness:
+				maxfitIndiv = prog
+		max_total_fitness = max( [max_total_fitness, maxfitness] )
+		if max_total_fitness == maxfitness:
+			max_total_fitness_indiv = maxfitIndiv
 		print "Total Fitness: ", totalfitness, "Max: ", maxfitness, "Gen: ", generation_num
 		i = 0
 		next_generation = []
@@ -684,6 +751,17 @@ def main():
 		next_generation = []
 		generation_num += 1
 
-	print max(population, key=lambda item: item.fitness)
+	dumpstate()
 
-main()
+if len(sys.argv) == 1:
+	generate()
+else:
+	# Playback file
+	fname_indiv = sys.argv[1]
+	fname_rundata = sys.argv[2]
+	with open(fname_indiv, 'rb') as f:
+    		indiv = pickle.load(f)
+	with open(fname_rundata, 'rb') as f:
+    		rundat = pickle.load(f)
+    	
+    	print evalFitness( indiv, rundat, True )
