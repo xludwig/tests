@@ -43,7 +43,7 @@ def select_operation( operations ):
 	oper = weighted_choice( operations, lambda op: op[1] )
 	return oper[0]
 	
-def Operation_Copy( population, func_list, term_list ):
+def Operation_Copy( population, func_list, term_list, max_d ):
 	result = []
 	result.append( weighted_choice( population, lambda indiv: indiv.fitness ) )
 	return result
@@ -177,7 +177,7 @@ def sel_random_node( indiv ):
 	selnode = random.randint(1,cant_nodes-1)
 	return get_node_num(indiv, selnode)
 
-def Operation_CrossOver( population, func_list, term_list ):
+def Operation_CrossOver( population, func_list, term_list, max_d ):
 	result = []
 	indiv1 = weighted_choice( population, lambda indiv: indiv.fitness )
 	indiv2 = weighted_choice( population, lambda indiv: indiv.fitness )
@@ -191,7 +191,7 @@ def Operation_CrossOver( population, func_list, term_list ):
 	result.append( indiv2 )
 	return result
 
-def Operation_Mutation( population, func_list, term_list ):
+def Operation_Mutation( population, func_list, term_list, max_d ):
 	result = []
 	indiv = weighted_choice( population, lambda indiv: indiv.fitness )
 	parentNode, parNum = sel_random_node( indiv )
@@ -210,6 +210,32 @@ def Operation_Mutation( population, func_list, term_list ):
 		parentNode.setParNum(parNum, elem)
 	result.append( indiv )
 	return result
+
+def Operation_MutationGen( population, func_set, term_set, max_d ):
+	result = []
+	indiv = weighted_choice( population, lambda indiv: indiv.fitness )
+	parentNode, parNum = sel_random_node( indiv )
+	
+	thresh = len(term_set) / ( len(term_set) + len(func_set) )
+	elem = gen_indiv(int(max_d*0.7), func_set, term_set ,"FULL", thresh)
+	parentNode.setParNum(parNum, elem)
+
+	result.append( indiv )
+	return result
+
+def Operation_NewIndivFull( population, func_set, term_set, max_d ):
+	result = []
+	thresh = len(term_set) / ( len(term_set) + len(func_set) )
+	indiv = gen_indiv(max_d, func_set, term_set ,"FULL", thresh)
+	return result
+
+def Operation_NewIndivGrow( population, func_set, term_set, max_d ):
+	result = []
+	thresh = len(term_set) / ( len(term_set) + len(func_set) )
+	indiv = gen_indiv(max_d, func_set, term_set ,"GROW", thresh)
+	return result
+
+
 
 #### Problem Specific
 def gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, last_s_b, last_b_cot, last_s_cot, last_res, last_cot ):
@@ -695,7 +721,7 @@ def generate():
 	rand_state = random.getstate()
 	signal.signal(signal.SIGINT, signal_handler)
 	
-	pop_size = 1000
+	pop_size = 70
 	max_depth = 8
 	max_generations = 100
 	##rundata = [100, 100, 100.2, 100.5, 101, 1000, 1010, 1020, 900, 500, 200, 90, 80, 50]
@@ -705,13 +731,16 @@ def generate():
 	func_set = [func_ifless, func_iflesseq, func_ifmore, func_ifmoreeq, func_ifeq, func_if, func_plus, func_minus, func_por, func_div, func_less, func_lesseq, func_more, func_moreeq, func_eq, func_and, func_or, func_prev_delta_x_y, func_prev_cot, func_prev_delta]
 	term_set = [term_zero, term_one, term_two, term_three, term_random_const_100, term_random_const_1000, term_last_b_d, term_last_s_d, term_last_b_b, term_last_s_b, term_last_b_cot, term_last_s_cot, term_last_res, term_last_cot, term_bal_b, term_bal_d, term_runnum]
 
-	copy_probability = 0.2
-	crossover_probability = 0.7
-	mutation_probability = 0.1
-	operations = [( Operation_Copy, copy_probability), ( Operation_CrossOver, crossover_probability), ( Operation_Mutation, mutation_probability ) ]
+	copy_probability = 0.05
+	crossover_probability = 0.60
+	mutation_probability = 0.05
+	mutationgen_probability = 0.06
+	newindivgrow_probability = 0.12
+	newindivfull_probability = 0.12
+	operations = [( Operation_Copy, copy_probability), ( Operation_CrossOver, crossover_probability), ( Operation_Mutation, mutation_probability ), ( Operation_MutationGen, mutationgen_probability ), ( Operation_NewIndivFull, newindivfull_probability ), ( Operation_NewIndivGrow, newindivgrow_probability ) ]
 
-	growpct = 0.0
-	fullpct = 1.0
+	growpct = 0.5
+	fullpct = 0.5
 
 	print "Creating Initial Population"
 	population = init_population( pop_size, max_depth, func_set, term_set, growpct, fullpct )
@@ -724,32 +753,60 @@ def generate():
 			nodes = count_nodes( p )
 			totalnodes += nodes
 			maxnodes = max( [maxnodes, nodes] )
-		print "Population Stats: max:", maxnodes, "total:", totalnodes
+		print "Population Stats: Size: ", len(population) ,"max:", maxnodes, "total:", totalnodes, "avg:", int(totalnodes/pop_size)
 	
-		print "Evaluation Fitness Gen: ", generation_num
+		print "Evaluating Fitness Gen: ", generation_num
 		totalfitness = 0
 		maxfitness = 0
+		i = 0
 		for prog in population:
 			prog.fitness = evalFitness( prog, rundata, False ) 
 			totalfitness += prog.fitness
 			maxfitness = max( [maxfitness, prog.fitness] )
 			if maxfitness == prog.fitness:
 				maxfitIndiv = prog
+			i += 1
+			if i % 5 == 0:
+				time.sleep(1)
+			if i % 10 == 0:
+				sys.stdout.write("*")
+    				sys.stdout.flush()
+    				
+		print "Done Gen", generation_num
+		
 		max_total_fitness = max( [max_total_fitness, maxfitness] )
 		if max_total_fitness == maxfitness:
 			max_total_fitness_indiv = maxfitIndiv
-		print "Total Fitness: ", totalfitness, "Max: ", maxfitness, "Gen: ", generation_num
+		print "Total Fitness: ", int(totalfitness), "Max: ", int(maxfitness), "Avg: ", int(totalfitness/pop_size) ,"Gen: ", generation_num
+		print "Getting top 10"
+		
+		sortedpop = sorted(population, key = lambda x : x.fitness, reverse = True)
+		top10_pop = []
+		last_fit = 0
+		topn = 0
+		for p in sortedpop:
+			if last_fit != p.fitness:
+				top10_pop.append(p)
+				topn += 1
+				lastfit = p.fitness
+				if topn == 10: break
+		print "got top ", topn
+		
 		i = 0
 		next_generation = []
 		print "Creating Next Generation: ", generation_num + 1
 		while i < pop_size:
 			oper = select_operation(operations)
-			gen_new_indivs = oper( population, func_set, term_set )
+			gen_new_indivs = oper( population, func_set, term_set, max_depth )
 			next_generation.extend( gen_new_indivs )
 			i += len(gen_new_indivs)
+		
+		next_generation.extend( top10_pop )
+		
 		population = next_generation
 		next_generation = []
 		generation_num += 1
+		pop_size = len( population )
 
 	dumpstate()
 
