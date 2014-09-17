@@ -43,9 +43,11 @@ def select_operation( operations ):
 	oper = weighted_choice( operations, lambda op: op[1] )
 	return oper[0]
 	
+import copy
+
 def Operation_Copy( population, func_list, term_list, max_d ):
 	result = []
-	result.append( weighted_choice( population, lambda indiv: indiv.fitness ) )
+	result.append( copy.deepcopy( weighted_choice( population, lambda indiv: indiv.fitness ) ) )
 	return result
 
 def count_nodes( indiv ):
@@ -760,11 +762,11 @@ def generate():
 		maxfitness = 0
 		i = 0
 		for prog in population:
-			prog.fitness = evalFitness( prog, rundata, False ) 
+			prog.fitness = evalFitness( prog, rundata, False )
 			totalfitness += prog.fitness
 			maxfitness = max( [maxfitness, prog.fitness] )
 			if maxfitness == prog.fitness:
-				maxfitIndiv = prog
+				maxfitIndiv = copy.deepcopy( prog )
 			i += 1
 			if i % 5 == 0:
 				time.sleep(1)
@@ -776,7 +778,7 @@ def generate():
 		
 		max_total_fitness = max( [max_total_fitness, maxfitness] )
 		if max_total_fitness == maxfitness:
-			max_total_fitness_indiv = maxfitIndiv
+			max_total_fitness_indiv = copy.deepcopy( maxfitIndiv )
 		print "Total Fitness: ", int(totalfitness), "Max: ", int(maxfitness), "Avg: ", int(totalfitness/pop_size) ,"Gen: ", generation_num
 		print "Getting top 10"
 		
@@ -786,7 +788,7 @@ def generate():
 		topn = 0
 		for p in sortedpop:
 			if last_fit != p.fitness:
-				top10_pop.append(p)
+				top10_pop.append( copy.deepcopy( p ) )
 				topn += 1
 				lastfit = p.fitness
 				if topn == 10: break
