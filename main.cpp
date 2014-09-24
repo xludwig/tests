@@ -1,48 +1,186 @@
+#include "iostream"
+#include "list"
+#include "string"
+#include "vector"
+#include "map"
+#include "cstdlib" // para random
+
+
+class weigthed_member_itf
+{
+
+public:
+	virtual double getweight() = 0;
+};
+
+int
+weighted_choice( const std::vector<weigthed_member_itf*> &choices )
+{
+	double total = 0.0;
+	for ( std::vector<weigthed_member_itf*>::iterator it = choices.begin(); it != choices.end(); ++it )
+		total += (*it)->getweight();
+
+	double r = (double)rand()/(double)RAND_MAX) * total;
+	double accum = 0.0;
+	int idx = 0;
+	for ( std::vector<weigthed_member_itf*>::iterator it = choices.begin(); it != choices.end(); ++it, ++idx )
+			if ( accum < r && (accum + (*it)->getweight()) >= r )
+				return idx;
+}
+
+class BaseElement
+{
+public:
+	explicit BaseElement( int qtyChilds ): numChilds(qtyChilds), childs(qtyChilds){}
+
+	BaseElement( const BaseElement &other ): numChilds(other.numChilds), childs(other.numChilds)
+	{
+		std::vector<BaseElement *>::iterator itnew = this->childs;
+		for ( std::vector<BaseElement *>::iterator it = other.childs.begin(); it != other.childs.end(); ++it, ++itnew )
+			*itnew = (*it)->clone();
+	}
+
+	virtual double execute( const std::map<std::string, double> &Context, const std::vector<double> &prevVals, int maxPrevValIdx ) = 0;
+
+	virtual BaseElement *clone() = 0;
+
+	void addChild( int idx, BaseElement * child ) { childs[idx] = child; }
+	int getNumChilds() { return numChilds; };
+
+protected:
+	int numChilds;
+	std::vector<BaseElement *> childs;
+};
+
+
+class func_root: public BaseElement, weigthed_member_itf
+{
+	public:
+		func_root(): BaseElement(1), fitness(0.0) {}
+
+		func_root * clone(){ return new func_root( *this );	}
+
+		void setFitness( double fit ) { fitness = fit; }
+		double getFitness() { return fitness; }
+
+		double getweight() { return getFitness(); }
+
+		virtual double execute( const std::map<std::string, double> &Context, const std::vector<double> &prevVals, int maxPrevValIdx )
+		{	return this->childs[0].execute(Context, prevVals, maxPrevValIdx); }
+
+	private:
+		double fitness;
+};
+
+class func_if: public BaseElement
+{
+	public:
+		func_if(): BaseElement(3) {}
+
+		func_if * clone(){ return new func_if( *this );	}
+
+		virtual double execute( const std::map<std::string, double> &Context, const std::vector<double> &prevVals, int maxPrevValIdx )
+		{
+			if ( this->childs[0].execute(Context, prevVals, maxPrevValIdx) >= 0 )
+				return this->childs[1].execute(Context, prevVals, maxPrevValIdx);
+			else:
+				return this->childs[1].execute(Context, prevVals, maxPrevValIdx);
+		}
+};
+
+class term_one: public BaseElement
+{
+	public:
+		void term_one(): BaseElement(0) {}
+
+		virtual double execute( const std::map<std::string, double> &Context, const std::vector<double> &prevVals, int maxPrevValIdx )
+		{
+			return 1.0;
+		}
+};
+
+BaseElement *
+gen_indiv_rec( int max_d, std::map<int, BaseElement *(*)()> &func_set, std::map<int, BaseElement *(*)()> &term_set, int method, double thresh)
+{
+	BaseElement *nextElement = 0;
+
+	if ( max_d == 0 || ( method == 1 && ((double)rand()/(double)RAND_MAX) < thresh )  )
+	{
+		int idx = rand() % term_set.size();
+		nextElement = (*term_set[idx])();
+	}
+	else
+	{
+		int idx = rand() % func_set.size();
+		nextElement = (*func_set[idx])();
+	}
+
+	for ( int i = 0; i < nextElement->getNumChilds(); ++i )
+		nextElement->addChild( i, gen_indiv_rec(max_d - 1, func_set, term_set ,method, thresh) );
+
+	return nextElement;
+}
+
+std::vector<BaseElement *>
+init_population( int pop_size, int max_depth, std::map<int, BaseElement *(*)()> &func_set, std::map<int, BaseElement *(*)()> &term_set, double growpct, double fullpct )
+{
+	double thresh = term_set.size() / ( term_set.size() + func_set.size() );
+
+	std::vector populat(pop_size);
+	std::cout << "FULL: "
+	int total_count = 0
+	for (int i = 0; i < pop_size*fullpct; ++i, ++total_count)
+	{
+		std::cout << "+";
+		BaseElement *indiv = new func_root();
+		indiv.addChild( 0, gen_indiv_rec( max_depth, func_set, term_set, 0, thresh ) );
+		populat[total_count] = indiv;
+	}
+	std::cout << std::endl;
+
+	std::cout << "GROW: "
+	for (int i = 0; i < pop_size*growpct; ++i, ++total_count)
+	{
+		std::cout << "+";
+		BaseElement *indiv = new func_root();
+		indiv.addChild( 0, gen_indiv_rec( max_depth, func_set, term_set, 1, thresh ) );
+		populat[total_count] = indiv;
+	}
+	std::cout << std::endl;
+}
+
+void
+Operation_Copy( std::list<BaseElement *> &result, std::vector<BaseElement *> &population, std::map<int, BaseElement *(*)()> &func_set, std::map<int, BaseElement *(*)()> &term_set, int max_depth )
+{
+	result.clear();
+	result.append(  );
+}
+
+def Operation_Copy( population, func_list, term_list, max_d ):
+	result = []
+	result.append( copy.deepcopy( weighted_choice( population, lambda indiv: indiv.fitness ) ) )
+	return result
+
+
+
+
+int
+main()
+{
+	std::cout << "Hola" << std::endl;
+
+}
+
+/*
+
+
+
+
+
+
 ##### Generic Funcs
-import random
-import time
-import pickle
 
-def gen_indiv(max_d, func_set, term_set ,method, thresh):
-	if max_d == 0 or (method == "GROW" and random.random() < thresh):
-		elem = random.choice( term_set )()
-	else:
-		elem = random.choice( func_set )()
-		
-	for i in range(elem.num_childs):
-		elem.addchild( gen_indiv(max_d - 1, func_set, term_set ,method, thresh) )
 
-	return elem
-
-def init_population( pop_size, max_depth, func_set, term_set, growpct, fullpct):
-	thresh = len(term_set) / ( len(term_set) + len(func_set) )
-
-	populat = []
-	for i in range(int(pop_size*fullpct)):
-		print "Creating FULL", i
-		indiv = func_root()
-		indiv.addchild(gen_indiv(max_depth, func_set, term_set, "FULL", thresh))
-		populat.append( indiv )
-	for i in range(int(pop_size*growpct)):
-		print "Creating GROW", i
-		indiv = func_root()
-		indiv.addchild(gen_indiv(max_depth, func_set, term_set, "GROW", thresh))
-		populat.append( indiv )
-	return populat
-
-def weighted_choice(choices, getweigth):
-   total = sum( getweigth(c) for c in choices)
-   r = random.uniform(0, total)
-   upto = 0
-   for c in choices:
-      upto += getweigth(c)
-      if upto > r:
-         return c
-
-def select_operation( operations ):
-	oper = weighted_choice( operations, lambda op: op[1] )
-	return oper[0]
-	
 import copy
 
 def Operation_Copy( population, func_list, term_list, max_d ):
@@ -76,7 +214,7 @@ def get_node_rec( indiv, selnode ):
 		accum_qty += qty
 		node_num += 1
 		#print "Acc_qty", indiv.nam, c.nam, accum_qty
-	
+
 	#print "R4", None, None, accum_qty
 	return None, None, accum_qty
 
@@ -94,7 +232,7 @@ class cls_test_gn:
 		self.childs = []
 	def __repr__(self):
 		if self.num_child > 0:
-			return self.nam + "-" + str(self.num_childs) + ": " + str(self.childs) 
+			return self.nam + "-" + str(self.num_childs) + ": " + str(self.childs)
 		else:
 			return self.nam + "-" + str(self.num_childs)
 ## A-> B -> C -> D
@@ -108,14 +246,14 @@ def test_gn1():
 	E = cls_test_gn("E", 2)
 	F = cls_test_gn("F", 0)
 	G = cls_test_gn("G", 0)
-	
+
 	A.childs.append(B)
 	B.childs.append(C)
 	B.childs.append(E)
 	C.childs.append(D)
 	E.childs.append(F)
 	E.childs.append(G)
-	
+
 	print A
 	print count_nodes(A)
 	print get_node_num( A, 1 )
@@ -124,9 +262,9 @@ def test_gn1():
 	print get_node_num( A, 4 )
 	print get_node_num( A, 5 )
 	print get_node_num( A, 6 )
-	
+
 	exit()
-	
+
 
 ## A-> B -> C -> D
 ##       -> E -> F
@@ -150,7 +288,7 @@ def test_gn2():
 	L = cls_test_gn("L", 0)
 	M = cls_test_gn("M", 1)
 	N = cls_test_gn("N", 0)
-	
+
 	A.childs.append(B)
 	B.childs.append(C)
 	B.childs.append(E)
@@ -164,14 +302,14 @@ def test_gn2():
 	H.childs.append(K)
 	K.childs.append(L)
 	M.childs.append(N)
-	
+
 	print A
 	print count_nodes(A)
 	for i in range( 1, 14 ):
 		print i, get_node_num( A, i )
 	exit()
 
-#test_gn2() 
+#test_gn2()
 
 
 def sel_random_node( indiv ):
@@ -217,7 +355,7 @@ def Operation_MutationGen( population, func_set, term_set, max_d ):
 	result = []
 	indiv = weighted_choice( population, lambda indiv: indiv.fitness )
 	parentNode, parNum = sel_random_node( indiv )
-	
+
 	thresh = len(term_set) / ( len(term_set) + len(func_set) )
 	elem = gen_indiv(int(max_d*0.7), func_set, term_set ,"FULL", thresh)
 	parentNode.setParNum(parNum, elem)
@@ -236,6 +374,11 @@ def Operation_NewIndivGrow( population, func_set, term_set, max_d ):
 	thresh = len(term_set) / ( len(term_set) + len(func_set) )
 	indiv = gen_indiv(max_d, func_set, term_set ,"GROW", thresh)
 	return result
+
+def select_operation( operations ):
+	oper = weighted_choice( operations, lambda op: op[1] )
+	return oper[0]
+
 
 
 
@@ -256,16 +399,16 @@ def gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, la
 	context["last_cot"] = last_cot
 	context["curr_cot"] = curr_cot
 	return context
-	
+
 def evalFitness( prog, rundata, print_data ):
 	b_bal = 1
 	d_bal = 100
-	
+
 	# Tomo -100 a -10 como % ven
 	# Tomo 10 a 100 como % comp
 	# Tomo -10 a 10 como no action
 	# fuera de rango redondeo a max o min
-	
+
 	runnum = 0
 	last_b_d = 0
 	last_s_d = 0
@@ -279,16 +422,16 @@ def evalFitness( prog, rundata, print_data ):
 		#if runnum % 1000 == 0:
 			#sys.stdout.write("")
     			#sys.stdout.flush()
-	
+
 		d = dcomplete[1]
-		cont = gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, last_s_b, last_b_cot, last_s_cot, last_res, last_cot, d ) 
+		cont = gen_context( rundata, runnum, b_bal, d_bal, last_b_d, last_s_d, last_b_b, last_s_b, last_b_cot, last_s_cot, last_res, last_cot, d )
 		res = prog.execute( cont )
 		if res < -10:
 			if res < -100: res = -100
 			delta = b_bal * ( -res / 100 )
 			if delta >= 0.01:
-				if delta > 2:
-					delta = 2
+				if delta > 0.1:
+					delta = 0.1
 				d_adj = d * 0.999
 				d_bal += delta * d_adj * 0.998
 				b_bal -= delta
@@ -302,8 +445,8 @@ def evalFitness( prog, rundata, print_data ):
 			d_adj = d * 1.001
 			delta_btc = delta/d_adj
 			if delta_btc >= 0.01:
-				if delta_btc > 2:
-					delta_btc = 2
+				if delta_btc > 0.1:
+					delta_btc = 0.1
 				b_bal += delta_btc * 0.998
 				d_bal -= delta_btc * d_adj
 				last_b_cot = d_adj
@@ -322,8 +465,8 @@ class generic_func:
 		self.child = []
 
 	def getParNum(self, parNum):
-		return self.child[parNum] 
-	
+		return self.child[parNum]
+
 	def setParNum(self, parNum, node):
 		self.child[parNum] = node
 
@@ -427,7 +570,7 @@ class func_plus(generic_func):
 	def execute( self, context ):
 		a = self.child[0].execute( context )
 		b = self.child[1].execute( context )
-		try:		
+		try:
 			return a + b
 		except:
 			return a
@@ -438,7 +581,7 @@ class func_minus(generic_func):
 	def execute( self, context ):
 		a = self.child[0].execute( context )
 		b = self.child[1].execute( context )
-		try:		
+		try:
 			return a - b
 		except:
 			return b
@@ -449,7 +592,7 @@ class func_por(generic_func):
 	def execute( self, context ):
 		a = self.child[0].execute( context )
 		b = self.child[1].execute( context )
-		try:		
+		try:
 			return a * b
 		except:
 			return a
@@ -460,7 +603,7 @@ class func_div(generic_func):
 	def execute( self, context ):
 		a = self.child[0].execute( context )
 		b = self.child[1].execute( context )
-		try:		
+		try:
 			return a / b
 		except:
 			return b
@@ -473,7 +616,7 @@ class func_less(generic_func):
 			return 1
 		else:
 			return 0
-		
+
 class func_lesseq(generic_func):
 	def __init__(self):
 		generic_func.__init__(self)
@@ -607,7 +750,7 @@ class term_three(generic_term):
 		generic_term.__init__(self)
 	def execute( self, context ):
 		return 3
-		
+
 class term_random_const_100(generic_term):
 	def __init__(self):
 		generic_term.__init__(self)
@@ -721,8 +864,8 @@ class term_curr_vol(generic_term):
 			return 0
 		len_data = len(last_data) - 1
 		return last_data[len_data][2]
-	
-	
+
+
 		return context["runnum"]
 
 class term_curr_vol_diff(generic_term):
@@ -763,7 +906,7 @@ def dumpstate():
 	global rand_state
 	global rundata
 	global population
-	
+
 	if max_total_fitness == 0:
 		print "Not Dumping State"
 		sys.exit()
@@ -799,15 +942,15 @@ def generate( initial_pop, rundat ):
 	global rand_state
 	global rundata
 	global population
-	
+
 	rand_state = random.getstate()
 	signal.signal(signal.SIGINT, signal_handler)
-	
-	pop_size = 500
+
+	pop_size = 2000
 	max_depth = 5
 	max_generations = 1000
 	rundata = rundat
-	
+
 	func_set = [func_ifless, func_iflesseq, func_ifmore, func_ifmoreeq, func_ifeq, func_if, func_plus, func_minus, func_por, func_div, func_less, func_lesseq, func_more, func_moreeq, func_eq, func_and, func_or, func_prev_delta_x_y, func_prev_cot, func_prev_delta, func_prev_delta_x_y, func_prev_cot, func_prev_delta, func_prev_delta_x_y, func_prev_cot, func_prev_delta, func_prev_delta_x_y, func_prev_cot, func_prev_delta, func_prev_delta_x_y, func_prev_cot, func_prev_delta]
 	term_set = [term_zero, term_one, term_two, term_three, term_random_const_100, term_random_const_1000, term_last_b_d, term_last_s_d, term_last_b_b, term_last_s_b, term_last_b_cot, term_last_s_cot, term_last_res, term_last_cot, term_curr_cot, term_curr_val, term_timediff, term_curr_vol, term_curr_vol_diff, term_curr_cot_diff, term_bal_b, term_bal_d, term_runnum, term_last_b_d, term_last_s_d, term_last_b_b, term_last_s_b, term_last_b_cot, term_last_s_cot, term_last_res, term_last_cot, term_curr_cot, term_curr_val, term_timediff, term_curr_vol, term_curr_vol_diff, term_curr_cot_diff, term_bal_b, term_bal_d, term_runnum, term_last_cot, term_curr_cot, term_curr_val, term_timediff, term_curr_vol, term_curr_vol_diff, term_curr_cot_diff, term_bal_b, term_bal_d, term_last_cot, term_curr_cot, term_curr_val, term_timediff, term_curr_vol, term_curr_vol_diff, term_curr_cot_diff, term_bal_b, term_bal_d, term_last_cot, term_curr_cot, term_curr_val, term_timediff, term_curr_vol, term_curr_vol_diff, term_curr_cot_diff, term_bal_b, term_bal_d]
 
@@ -821,11 +964,11 @@ def generate( initial_pop, rundat ):
 
 	growpct = 0.5
 	fullpct = 0.5
-	
+
 	topNcpy = 3
 
 	print "Creating Initial Population"
-	
+
 	if initial_pop is None:
 		population = init_population( pop_size, max_depth, func_set, term_set, growpct, fullpct )
 	else:
@@ -841,7 +984,7 @@ def generate( initial_pop, rundat ):
 			totalnodes += nodes
 			maxnodes = max( [maxnodes, nodes] )
 		print "Population Stats Size: ", len(population) ,"max:", maxnodes, "total:", totalnodes, "avg:", int(totalnodes/pop_size)
-	
+
 		print "Evaluating Fitness Gen: ", generation_num
 		totalfitness = 0
 		maxfitness = 0
@@ -863,22 +1006,22 @@ def generate( initial_pop, rundat ):
     				sys.stdout.flush()
 
 		elapsed = (time.time() - starttime)
-    				
+
 		print "Done [", elapsed,"]secs Gen", generation_num
-		
+
 		max_total_fitness = max( [max_total_fitness, maxfitness] )
 		if max_total_fitness == maxfitness:
 			max_total_fitness_indiv = copy.deepcopy( maxfitIndiv )
 			if max_total_fitness > 150 and max_total_fitness > dump_fitness:
 				dump_fitness = max_total_fitness
 				dumpstate()
-				
+
 		if generation_num % 50 == 0 and generation_num != 0:
 			dumpstate()
-		
+
 		print "Total Fitness: ", int(totalfitness), "Max: ", int(maxfitness), "Avg: ", int(totalfitness/pop_size) ,"Gen: ", generation_num
 		print "Getting top", topNcpy
-		
+
 		sortedpop = sorted(population, key = lambda x : x.fitness, reverse = True)
 		top10_pop = []
 		last_fit = 0
@@ -890,7 +1033,7 @@ def generate( initial_pop, rundat ):
 				lastfit = p.fitness
 				if topn == topNcpy: break
 		print "got top ", topn
-		
+
 		i = 0
 		next_generation = []
 		print "Creating Next Generation: ", generation_num + 1
@@ -899,9 +1042,9 @@ def generate( initial_pop, rundat ):
 			gen_new_indivs = oper( population, func_set, term_set, max_depth )
 			next_generation.extend( gen_new_indivs )
 			i += len(gen_new_indivs)
-		
+
 		next_generation.extend( top10_pop )
-		
+
 		population = next_generation
 		next_generation = []
 		generation_num += 1
@@ -927,9 +1070,9 @@ elif len(sys.argv) == 3: # Indiv, rundata
     		indiv = pickle.load(f)
 	with open(fname_rundata, 'rb') as f:
     		rundat = pickle.load(f)
-    	
+
     	print evalFitness( indiv, rundat, True )
-    	
+
 elif len(sys.argv) == 4: # Population, Rundata, cantPrune
 	#prune
 	print "Loading data"
@@ -939,7 +1082,7 @@ elif len(sys.argv) == 4: # Population, Rundata, cantPrune
     		population = pickle.load(f)
 	with open(fname_rundata, 'rb') as f:
     		rundat = pickle.load(f)
-    	
+
     	i = 0
 	for prog in population:
 		if not hasattr(prog, 'fitness'):
@@ -951,7 +1094,7 @@ elif len(sys.argv) == 4: # Population, Rundata, cantPrune
 
 	total = int(sys.argv[3])
 	print "Getting top", total
-	
+
 	sortedpop = sorted(population, key = lambda x : x.fitness, reverse = True)
 	population = None
 	topn = 0
@@ -966,5 +1109,8 @@ elif len(sys.argv) == 4: # Population, Rundata, cantPrune
 	print "Got top ", topn
 
 	sortedpop = None
-	
-	generate( topN_pop, rundat )
+
+	generate( topN_pop )
+
+
+*/

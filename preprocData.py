@@ -13,7 +13,7 @@ def preprocessRetData(fname, filt_time):
 			btc = float(fields[2])
 			if filt_time is not None and optime <= filt_time:
 				continue
-			if btc < 0.1:
+			if btc < 1:
 				continue
 			if optime not in retrievedData:
 				retrievedData[optime] = []
@@ -27,7 +27,7 @@ def preprocessRetData(fname, filt_time):
 	for tim in retrievedData:
 		retData.append(max(retrievedData[tim], key = lambda x: x[2]))
 
-	return retData
+	return sorted(retData, key = lambda x : x[0])
 
 import sys
 import pickle
@@ -35,10 +35,13 @@ import pickle
 fname_data = sys.argv[1]
 
 filter_time = None
-if len(sys.argv[1]) > 2:
+if len(sys.argv) > 2:
 	filter_time = int(sys.argv[2])
 	
 data = preprocessRetData(fname_data,filter_time)
+
+#print data[len(data) - 100:]
+#exit()
 
 with open("preproc" + fname_data, 'wb') as f:
 	pickle.dump(data, f)
